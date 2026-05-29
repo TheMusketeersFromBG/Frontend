@@ -3,13 +3,16 @@ import { View, Text, ScrollView, TouchableOpacity, Switch, Modal, TextInput, Ima
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { styles } from './styles/ProfileScreenStyles';
+import { styles } from '../styles/screens/ProfileScreenStyles';
 import { useProfileData } from '../hooks/useProfileData';
+import { useLanguage } from '../context/LanguageContext';
+import type { Lang } from '../translations';
 
 interface Props {
   onBack: () => void;
   dark: boolean;
   onToggleDark: () => void;
+  onLogout: () => void;
 }
 
 const ACCENT = '#9e9e9e';
@@ -27,20 +30,8 @@ const LANGUAGES = [
   { code: 'FR', name: 'Français',   flag: '🇫🇷' },
 ];
 
-const achievements = [
-  { emoji: '🏆', title: 'Първа стъпка',  desc: 'Създаден профил',   unlocked: true  },
-  { emoji: '🔥', title: 'Огнен старт',   desc: '7 дни поред',       unlocked: false },
-  { emoji: '📚', title: 'Книжен молец',  desc: 'Прочетена 1 книга', unlocked: false },
-  { emoji: '💪', title: 'Железен човек', desc: '10 тренировки',     unlocked: false },
-  { emoji: '🥗', title: 'Здравословен',  desc: '30 дни проследени', unlocked: false },
-  { emoji: '⚡', title: 'На ниво',       desc: '30 дни streak',     unlocked: false },
-];
+// achievements defined inside component to use t
 
-const mainMetrics = [
-  { key: 'height',    label: 'Ръст',    unit: 'cm'  },
-  { key: 'weight',    label: 'Тегло',   unit: 'kg'  },
-  { key: 'birthdate', label: 'Възраст', unit: 'год' },
-];
 
 function calcAge(birthdate: string): string {
   if (!birthdate) return '—';
@@ -52,14 +43,6 @@ function calcAge(birthdate: string): string {
   return String(age);
 }
 
-const detailedMeasures = [
-  { key: 'chest',     label: 'Гърди'  },
-  { key: 'waist',     label: 'Кръст'  },
-  { key: 'hips',      label: 'Ханш'   },
-  { key: 'shoulders', label: 'Рамене' },
-  { key: 'bicep',     label: 'Бицепс' },
-  { key: 'thigh',     label: 'Бедро'  },
-];
 
 type MetricKey = keyof ReturnType<typeof useProfileData>['data']['metrics'];
 
@@ -77,8 +60,33 @@ function bmiLabel(bmi: number): { label: string; color: string } {
   return           { label: 'Затлъстяване',           color: '#f44336' };
 }
 
-export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
+export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: Props) {
   const { data, updateMetric, updateName, updatePhoto, updateNotifications, updateLanguage } = useProfileData();
+
+  const achievements = [
+    { emoji: '🏆', title: t.ach1Title, desc: t.ach1Desc, unlocked: true  },
+    { emoji: '🔥', title: t.ach2Title, desc: t.ach2Desc, unlocked: false },
+    { emoji: '📚', title: t.ach3Title, desc: t.ach3Desc, unlocked: false },
+    { emoji: '💪', title: t.ach4Title, desc: t.ach4Desc, unlocked: false },
+    { emoji: '🥗', title: t.ach5Title, desc: t.ach5Desc, unlocked: false },
+    { emoji: '⚡', title: t.ach6Title, desc: t.ach6Desc, unlocked: false },
+  ];
+  const { lang: currentLang, setLang, t } = useLanguage();
+
+  const mainMetrics = [
+    { key: 'height',    label: t.height, unit: t.cm    },
+    { key: 'weight',    label: t.weight_, unit: 'kg'   },
+    { key: 'birthdate', label: t.age,    unit: t.years },
+  ];
+
+  const detailedMeasures = [
+    { key: 'chest',     label: t.chest     },
+    { key: 'waist',     label: t.waist     },
+    { key: 'hips',      label: t.hips      },
+    { key: 'shoulders', label: t.shoulders },
+    { key: 'bicep',     label: t.bicep     },
+    { key: 'thigh',     label: t.thigh     },
+  ];
 
   const pickPhoto = async () => {
     const { status, canAskAgain } = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -156,7 +164,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Text style={styles.backText}>← Назад</Text>
+          <Text style={styles.backText}>{t.back}</Text>
         </TouchableOpacity>
 
         {/* Header */}
@@ -172,7 +180,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
           <View style={styles.nameCol}>
             <Text style={[styles.name, { color: text }]}>{displayName}</Text>
             <View style={[styles.planBadge, { backgroundColor: PLAN_COLOR }]}>
-              <Text style={styles.planBadgeText}>Безплатен план</Text>
+              <Text style={styles.planBadgeText}>{t.freePlan}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -186,7 +194,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
         {/* Основни мерки */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: subtext }]}>Основни мерки</Text>
+            <Text style={[styles.sectionTitle, { color: subtext }]}>{t.basicMeasurements}</Text>
           </View>
           <View style={[styles.card, { backgroundColor: cardBg }]}>
             <View style={styles.metricsRow}>
@@ -218,12 +226,12 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
         {bmi && bmiInfo && (
           <View style={[styles.card, { backgroundColor: cardBg, marginBottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
             <View>
-              <Text style={[styles.sectionTitle, { color: subtext }]}>BMI ИНДЕКС</Text>
+              <Text style={[styles.sectionTitle, { color: subtext }]}>{t.bmi}</Text>
               <Text style={[styles.metricValue, { color: bmiInfo.color, marginTop: 4 }]}>{bmi}</Text>
               <Text style={[styles.metricLabel, { color: bmiInfo.color, marginTop: 2 }]}>{bmiInfo.label}</Text>
             </View>
             <Text style={{ fontSize: 13, color: subtext, flex: 1, textAlign: 'right', marginLeft: 12 }}>
-              * BMI е приблизителен показател. AI анализ ще бъде наличен скоро.
+              {t.bmiNote}
             </Text>
           </View>
         )}
@@ -231,10 +239,10 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
         {/* Подробни мерки */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: subtext }]}>Подробни мерки</Text>
+            <Text style={[styles.sectionTitle, { color: subtext }]}>{t.detailedMeasurements}</Text>
             <TouchableOpacity onPress={() => setShowMeasures(!showMeasures)}>
               <Text style={[styles.toggleText, { color: ACCENT }]}>
-                {showMeasures ? 'Скрий' : 'Покажи'}
+                {showMeasures ? t.hide : t.show}
               </Text>
             </TouchableOpacity>
           </View>
@@ -259,14 +267,14 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
         {/* Статистики */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: subtext }]}>Статистики</Text>
+            <Text style={[styles.sectionTitle, { color: subtext }]}>{t.statistics}</Text>
           </View>
           <View style={styles.statsGrid}>
             {[
-              { emoji: '🔥', value: '0', label: 'Дни streak'  },
-              { emoji: '📅', value: '0', label: 'Активни дни' },
-              { emoji: '💪', value: '0', label: 'Тренировки'  },
-              { emoji: '📚', value: '0', label: 'Книги'       },
+              { emoji: '🔥', value: '0', label: t.daysStreak  },
+              { emoji: '📅', value: '0', label: t.activeDays  },
+              { emoji: '💪', value: '0', label: t.workouts    },
+              { emoji: '📚', value: '0', label: t.books       },
             ].map((s) => (
               <View key={s.label} style={[styles.statCard, { backgroundColor: cardBg }]}>
                 <Text style={styles.statEmoji}>{s.emoji}</Text>
@@ -280,7 +288,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
         {/* Постижения */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: subtext }]}>Постижения</Text>
+            <Text style={[styles.sectionTitle, { color: subtext }]}>{t.achievements}</Text>
           </View>
           <View style={styles.achieveGrid}>
             {achievements.map((a) => (
@@ -301,13 +309,13 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
         {/* Настройки */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: subtext }]}>Настройки</Text>
+            <Text style={[styles.sectionTitle, { color: subtext }]}>{t.settings}</Text>
           </View>
           <View style={[styles.card, { backgroundColor: cardBg }]}>
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="notifications-outline" size={20} color={subtext} />
-                <Text style={[styles.settingLabel, { color: text }]}>Нотификации</Text>
+                <Text style={[styles.settingLabel, { color: text }]}>{t.notifications}</Text>
               </View>
               <Switch
                 value={data.notifications}
@@ -319,7 +327,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name={dark ? 'moon' : 'sunny-outline'} size={20} color={subtext} />
-                <Text style={[styles.settingLabel, { color: text }]}>Тъмен режим</Text>
+                <Text style={[styles.settingLabel, { color: text }]}>{t.darkMode}</Text>
               </View>
               <Switch value={dark} onValueChange={onToggleDark} trackColor={{ true: PLAN_COLOR }} />
             </View>
@@ -327,23 +335,43 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
             <TouchableOpacity style={styles.settingRow} onPress={() => setShowLangPicker(true)}>
               <View style={styles.settingLeft}>
                 <Ionicons name="language-outline" size={20} color={subtext} />
-                <Text style={[styles.settingLabel, { color: text }]}>Език</Text>
+                <Text style={[styles.settingLabel, { color: text }]}>{t.language}</Text>
               </View>
               <Text style={[styles.settingValue, { color: subtext }]}>
-                {LANGUAGES.find(l => l.code === data.language)?.flag}{' '}
-                {LANGUAGES.find(l => l.code === data.language)?.name} →
+                {LANGUAGES.find(l => l.code === currentLang)?.flag}{' '}
+                {LANGUAGES.find(l => l.code === currentLang)?.name} →
               </Text>
             </TouchableOpacity>
             <View style={[styles.separator, { backgroundColor: sepColor }]} />
             <View style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="diamond-outline" size={20} color={PLAN_COLOR} />
-                <Text style={[styles.settingLabel, { color: text }]}>План</Text>
+                <Text style={[styles.settingLabel, { color: text }]}>{t.plan}</Text>
               </View>
-              <Text style={[styles.settingValue, { color: PLAN_COLOR }]}>Безплатен →</Text>
+              <Text style={[styles.settingValue, { color: PLAN_COLOR }]}>{t.freePlan} →</Text>
             </View>
           </View>
         </View>
+
+        {/* Log out */}
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: '#f4433618', marginTop: 8 }]}
+          onPress={() => Alert.alert(
+            t.logoutConfirm,
+            t.logoutMsg,
+            [
+              { text: t.cancel, style: 'cancel' },
+              { text: t.logout, style: 'destructive', onPress: onLogout },
+            ]
+          )}
+        >
+          <View style={[styles.settingRow, { paddingVertical: 6 }]}>
+            <View style={styles.settingLeft}>
+              <Ionicons name="log-out-outline" size={20} color="#f44336" />
+              <Text style={[styles.settingLabel, { color: '#f44336' }]}>{t.logout}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
 
       </ScrollView>
 
@@ -365,12 +393,16 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
       <Modal visible={showLangPicker} transparent animationType="slide" onRequestClose={() => setShowLangPicker(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: cardBg }]}>
-            <Text style={[styles.modalTitle, { color: text }]}>Избери език</Text>
+            <Text style={[styles.modalTitle, { color: text }]}>{t.language}</Text>
             <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
             {LANGUAGES.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
-                onPress={() => { updateLanguage(lang.code); setShowLangPicker(false); }}
+                onPress={() => {
+                updateLanguage(lang.code);
+                setLang(lang.code as Lang);
+                setShowLangPicker(false);
+              }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -395,7 +427,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
               style={[styles.modalBtn, { backgroundColor: inputBg, marginTop: 4 }]}
               onPress={() => setShowLangPicker(false)}
             >
-              <Text style={[styles.modalBtnText, { color: subtext }]}>Затвори</Text>
+              <Text style={[styles.modalBtnText, { color: subtext }]}>{t.close}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -419,13 +451,13 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: inputBg }]} onPress={() => setEditing(null)}>
-                <Text style={[styles.modalBtnText, { color: subtext }]}>Откажи</Text>
+                <Text style={[styles.modalBtnText, { color: subtext }]}>{t.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: PLAN_COLOR }]}
                 onPress={() => { updateMetric(editing!.key, inputVal); setEditing(null); }}
               >
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Запази</Text>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>{t.save}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -436,24 +468,24 @@ export default function ProfileScreen({ onBack, dark, onToggleDark }: Props) {
       <Modal visible={editingName} transparent animationType="fade" onRequestClose={() => setEditingName(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: cardBg }]}>
-            <Text style={[styles.modalTitle, { color: text }]}>Твоето име</Text>
+            <Text style={[styles.modalTitle, { color: text }]}>{t.yourName}</Text>
             <TextInput
               style={[styles.modalInput, { backgroundColor: inputBg, borderColor: inputBorder, color: text }]}
               value={inputVal}
               onChangeText={setInputVal}
               autoFocus
-              placeholder="Въведи име"
+              placeholder={t.enterName}
               placeholderTextColor={subtext}
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity style={[styles.modalBtn, { backgroundColor: inputBg }]} onPress={() => setEditingName(false)}>
-                <Text style={[styles.modalBtnText, { color: subtext }]}>Откажи</Text>
+                <Text style={[styles.modalBtnText, { color: subtext }]}>{t.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: PLAN_COLOR }]}
                 onPress={() => { updateName(inputVal); setEditingName(false); }}
               >
-                <Text style={[styles.modalBtnText, { color: '#fff' }]}>Запази</Text>
+                <Text style={[styles.modalBtnText, { color: '#fff' }]}>{t.save}</Text>
               </TouchableOpacity>
             </View>
           </View>

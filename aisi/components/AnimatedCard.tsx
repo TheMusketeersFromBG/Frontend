@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Animated, TouchableWithoutFeedback, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { styles } from './styles/AnimatedCardStyles';
+import { styles } from '../styles/components/AnimatedCardStyles';
 
 export interface Section {
   id: string;

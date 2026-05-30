@@ -28,6 +28,9 @@ const LANGUAGES = [
   { code: 'DE', name: 'Deutsch',   flag: '🇩🇪' },
   { code: 'RU', name: 'Русский',   flag: '🇷🇺' },
   { code: 'FR', name: 'Français',  flag: '🇫🇷' },
+  { code: 'ES', name: 'Español',   flag: '🇪🇸' },
+  { code: 'IT', name: 'Italiano',  flag: '🇮🇹' },
+  { code: 'PT', name: 'Português', flag: '🇵🇹' },
 ];
 
 const BG_TOP    = '#dbeafe'; // светло синьо

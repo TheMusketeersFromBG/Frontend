@@ -7,6 +7,7 @@ const KEY = 'aisi_language';
 export const LOCALE_MAP: Record<Lang, string> = {
   BG: 'bg-BG', EN: 'en-US', EL: 'el-GR', ZH: 'zh-CN',
   JP: 'ja-JP', KO: 'ko-KR', DE: 'de-DE', RU: 'ru-RU', FR: 'fr-FR',
+  ES: 'es-ES', IT: 'it-IT', PT: 'pt-PT',
 };
 
 interface LanguageContextType {
@@ -36,7 +37,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ lang, locale: LOCALE_MAP[lang], setLang, t: translations[lang] }}>
+    <LanguageContext.Provider value={{ lang, locale: LOCALE_MAP[lang] ?? 'en-US', setLang, t: translations[lang] ?? translations.BG }}>
       {children}
     </LanguageContext.Provider>
   );

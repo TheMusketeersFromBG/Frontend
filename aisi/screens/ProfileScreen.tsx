@@ -62,6 +62,7 @@ function bmiLabel(bmi: number): { label: string; color: string } {
 
 export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: Props) {
   const { data, updateMetric, updateName, updatePhoto, updateNotifications, updateLanguage } = useProfileData();
+  const { lang: currentLang, setLang, t } = useLanguage();
 
   const achievements = [
     { emoji: '🏆', title: t.ach1Title, desc: t.ach1Desc, unlocked: true  },
@@ -71,7 +72,6 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
     { emoji: '🥗', title: t.ach5Title, desc: t.ach5Desc, unlocked: false },
     { emoji: '⚡', title: t.ach6Title, desc: t.ach6Desc, unlocked: false },
   ];
-  const { lang: currentLang, setLang, t } = useLanguage();
 
   const mainMetrics = [
     { key: 'height',    label: t.height, unit: t.cm    },

@@ -10,7 +10,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const FAB_TOP = Dimensions.get('window').height * 0.62;
 
-interface Props { onBack: () => void; dark: boolean; createdAt: string; }
+interface Props { onBack: () => void; dark: boolean; createdAt: string; onOpenChat?: () => void; }
 
 const ACCENT = '#ff9800';
 
@@ -20,7 +20,7 @@ function offsetDate(base: string, days: number): string {
   return d.toISOString().split('T')[0];
 }
 
-export default function CaloriesScreen({ onBack, dark, createdAt }: Props) {
+export default function CaloriesScreen({ onBack, dark, createdAt, onOpenChat }: Props) {
   const { t, locale } = useLanguage();
   const minDate = createdAt.split('T')[0];
   const [dateKey, setDateKey] = useState(todayKey());
@@ -65,7 +65,7 @@ export default function CaloriesScreen({ onBack, dark, createdAt }: Props) {
 
   const fabActions = [
     { icon: 'camera-outline' as const,              label: t.camera,  color: '#607d8b', onPress: openCamera },
-    { icon: 'chatbubble-ellipses-outline' as const, label: t.aiChat,  color: '#9c27b0', onPress: () => Alert.alert(t.aiChat, t.aiChatMsg, [{ text: 'Разбрах' }]) },
+    { icon: 'chatbubble-ellipses-outline' as const, label: t.aiChat,  color: '#9c27b0', onPress: () => onOpenChat?.() },
     { icon: 'create-outline' as const,              label: t.manual,  color: ACCENT,    onPress: () => setShowAdd(true) },
   ];
 

@@ -19,15 +19,21 @@ const ACCENT = '#9e9e9e';
 const PLAN_COLOR = '#9c27b0';
 
 const LANGUAGES = [
-  { code: 'BG', name: 'Български',  flag: '🇧🇬' },
-  { code: 'EN', name: 'English',    flag: '🇬🇧' },
-  { code: 'EL', name: 'Ελληνικά',  flag: '🇬🇷' },
-  { code: 'ZH', name: '中文',       flag: '🇨🇳' },
-  { code: 'JP', name: '日本語',     flag: '🇯🇵' },
-  { code: 'KO', name: '한국어',     flag: '🇰🇷' },
-  { code: 'DE', name: 'Deutsch',    flag: '🇩🇪' },
-  { code: 'RU', name: 'Русский',    flag: '🇷🇺' },
-  { code: 'FR', name: 'Français',   flag: '🇫🇷' },
+  { code: 'BG', name: 'Български', flag: '🇧🇬' },
+  { code: 'EN', name: 'English', flag: '🇬🇧' },
+  { code: 'EL', name: 'Ελληνικά', flag: '🇬🇷' },
+  { code: 'ZH', name: '中文', flag: '🇨🇳' },
+  { code: 'JP', name: '日本語', flag: '🇯🇵' },
+  { code: 'KO', name: '한국어', flag: '🇰🇷' },
+  { code: 'DE', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'RU', name: 'Русский', flag: '🇷🇺' },
+  { code: 'FR', name: 'Français', flag: '🇫🇷' },
+  { code: 'ES', name: 'Español', flag: '🇪🇸' },
+  { code: 'IT', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'PT', name: 'Português', flag: '🇵🇹' },
+  { code: 'ES', name: 'Español', flag: '🇪🇸' },
+  { code: 'IT', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'PT', name: 'Português', flag: '🇵🇹' },
 ];
 
 // achievements defined inside component to use t
@@ -55,9 +61,9 @@ function calcBMI(height: string, weight: string): string | null {
 
 function bmiLabel(bmi: number): { label: string; color: string } {
   if (bmi < 18.5) return { label: 'Поднормено тегло', color: '#2196f3' };
-  if (bmi < 25)   return { label: 'Нормално тегло',   color: '#4caf50' };
-  if (bmi < 30)   return { label: 'Наднормено тегло', color: '#ff9800' };
-  return           { label: 'Затлъстяване',           color: '#f44336' };
+  if (bmi < 25) return { label: 'Нормално тегло', color: '#4caf50' };
+  if (bmi < 30) return { label: 'Наднормено тегло', color: '#ff9800' };
+  return { label: 'Затлъстяване', color: '#f44336' };
 }
 
 export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: Props) {
@@ -65,7 +71,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
   const { lang: currentLang, setLang, t } = useLanguage();
 
   const achievements = [
-    { emoji: '🏆', title: t.ach1Title, desc: t.ach1Desc, unlocked: true  },
+    { emoji: '🏆', title: t.ach1Title, desc: t.ach1Desc, unlocked: true },
     { emoji: '🔥', title: t.ach2Title, desc: t.ach2Desc, unlocked: false },
     { emoji: '📚', title: t.ach3Title, desc: t.ach3Desc, unlocked: false },
     { emoji: '💪', title: t.ach4Title, desc: t.ach4Desc, unlocked: false },
@@ -74,18 +80,18 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
   ];
 
   const mainMetrics = [
-    { key: 'height',    label: t.height, unit: t.cm    },
-    { key: 'weight',    label: t.weight_, unit: 'kg'   },
-    { key: 'birthdate', label: t.age,    unit: t.years },
+    { key: 'height', label: t.height, unit: t.cm },
+    { key: 'weight', label: t.weight_, unit: 'kg' },
+    { key: 'birthdate', label: t.age, unit: t.years },
   ];
 
   const detailedMeasures = [
-    { key: 'chest',     label: t.chest     },
-    { key: 'waist',     label: t.waist     },
-    { key: 'hips',      label: t.hips      },
+    { key: 'chest', label: t.chest },
+    { key: 'waist', label: t.waist },
+    { key: 'hips', label: t.hips },
     { key: 'shoulders', label: t.shoulders },
-    { key: 'bicep',     label: t.bicep     },
-    { key: 'thigh',     label: t.thigh     },
+    { key: 'bicep', label: t.bicep },
+    { key: 'thigh', label: t.thigh },
   ];
 
   const pickPhoto = async () => {
@@ -140,13 +146,13 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [inputVal, setInputVal] = useState('');
 
-  const bg       = dark ? '#0f0f0f' : '#FFF8F0';
-  const cardBg   = dark ? '#1c1c1e' : '#fff';
-  const text     = dark ? '#fff'    : '#111';
-  const subtext  = dark ? '#555'    : '#888';
-  const chipBg   = dark ? '#2a2a2a' : '#f5f5f5';
+  const bg = dark ? '#0f0f0f' : '#FFF8F0';
+  const cardBg = dark ? '#1c1c1e' : '#fff';
+  const text = dark ? '#fff' : '#111';
+  const subtext = dark ? '#555' : '#888';
+  const chipBg = dark ? '#2a2a2a' : '#f5f5f5';
   const sepColor = dark ? '#2a2a2a' : '#f0f0f0';
-  const inputBg  = dark ? '#2a2a2a' : '#f5f5f5';
+  const inputBg = dark ? '#2a2a2a' : '#f5f5f5';
   const inputBorder = dark ? '#3a3a3a' : '#e0e0e0';
 
   const displayName = data.name || 'Потребител';
@@ -271,10 +277,10 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
           </View>
           <View style={styles.statsGrid}>
             {[
-              { emoji: '🔥', value: '0', label: t.daysStreak  },
-              { emoji: '📅', value: '0', label: t.activeDays  },
-              { emoji: '💪', value: '0', label: t.workouts    },
-              { emoji: '📚', value: '0', label: t.books       },
+              { emoji: '🔥', value: '0', label: t.daysStreak },
+              { emoji: '📅', value: '0', label: t.activeDays },
+              { emoji: '💪', value: '0', label: t.workouts },
+              { emoji: '📚', value: '0', label: t.books },
             ].map((s) => (
               <View key={s.label} style={[styles.statCard, { backgroundColor: cardBg }]}>
                 <Text style={styles.statEmoji}>{s.emoji}</Text>
@@ -395,33 +401,33 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
           <View style={[styles.modalBox, { backgroundColor: cardBg }]}>
             <Text style={[styles.modalTitle, { color: text }]}>{t.language}</Text>
             <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
-            {LANGUAGES.map((lang) => (
-              <TouchableOpacity
-                key={lang.code}
-                onPress={() => {
-                updateLanguage(lang.code);
-                setLang(lang.code as Lang);
-                setShowLangPicker(false);
-              }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  paddingHorizontal: 8,
-                  borderRadius: 12,
-                  backgroundColor: data.language === lang.code ? `${PLAN_COLOR}22` : 'transparent',
-                  gap: 12,
-                }}
-              >
-                <Text style={{ fontSize: 24 }}>{lang.flag}</Text>
-                <Text style={{ fontSize: 16, color: text, flex: 1, fontWeight: data.language === lang.code ? '700' : '400' }}>
-                  {lang.name}
-                </Text>
-                {data.language === lang.code && (
-                  <Ionicons name="checkmark" size={20} color={PLAN_COLOR} />
-                )}
-              </TouchableOpacity>
-            ))}
+              {LANGUAGES.map((lang) => (
+                <TouchableOpacity
+                  key={lang.code}
+                  onPress={() => {
+                    updateLanguage(lang.code);
+                    setLang(lang.code as Lang);
+                    setShowLangPicker(false);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    borderRadius: 12,
+                    backgroundColor: data.language === lang.code ? `${PLAN_COLOR}22` : 'transparent',
+                    gap: 12,
+                  }}
+                >
+                  <Text style={{ fontSize: 24 }}>{lang.flag}</Text>
+                  <Text style={{ fontSize: 16, color: text, flex: 1, fontWeight: data.language === lang.code ? '700' : '400' }}>
+                    {lang.name}
+                  </Text>
+                  {data.language === lang.code && (
+                    <Ionicons name="checkmark" size={20} color={PLAN_COLOR} />
+                  )}
+                </TouchableOpacity>
+              ))}
             </ScrollView>
             <TouchableOpacity
               style={[styles.modalBtn, { backgroundColor: inputBg, marginTop: 4 }]}

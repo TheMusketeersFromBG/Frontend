@@ -10,7 +10,7 @@ import { useSkiTracker } from '../hooks/useSkiTracker';
 import { styles as skiStyles } from '../styles/screens/SkiTrackerStyles';
 import { useLanguage } from '../context/LanguageContext';
 
-interface Props { onBack: () => void; dark: boolean; }
+interface Props { onBack: () => void; dark: boolean; onOpenChat?: () => void; }
 
 const ACCENT    = '#f44336';
 const SKI_COLOR = '#29b6f6';
@@ -33,7 +33,7 @@ const QUICK_SPORTS_KEYS = [
   { key: 'sGolf',       emoji: '⛳' },
 ];
 
-export default function WorkoutScreen({ onBack, dark }: Props) {
+export default function WorkoutScreen({ onBack, dark, onOpenChat }: Props) {
   const { t, locale } = useLanguage();
 
   // Локализирани кратки имена на дните: Пон=0...Нед=6
@@ -125,7 +125,7 @@ export default function WorkoutScreen({ onBack, dark }: Props) {
             {!isPaid && <LockedOverlay dark={dark} />}
             <TouchableOpacity
               style={[styles.aiBtn, { backgroundColor: '#9c27b0' }]}
-              onPress={() => Alert.alert(t.aiProgram, t.aiProgramMsg, [{ text: 'Разбрах' }])}
+              onPress={() => onOpenChat?.()}
             >
               <Text style={styles.aiBtnText}>{t.aiProgram}</Text>
             </TouchableOpacity>

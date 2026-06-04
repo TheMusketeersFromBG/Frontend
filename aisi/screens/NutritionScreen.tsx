@@ -7,12 +7,12 @@ import { usePlan } from '../hooks/usePlan';
 import LockedOverlay from '../components/LockedOverlay';
 import { useLanguage } from '../context/LanguageContext';
 
-interface Props { onBack: () => void; dark: boolean; }
+interface Props { onBack: () => void; dark: boolean; onOpenChat?: () => void; }
 
 const ACCENT = '#8bc34a';
 // generated inside component
 
-export default function NutritionScreen({ onBack, dark }: Props) {
+export default function NutritionScreen({ onBack, dark, onOpenChat }: Props) {
   const { t, locale } = useLanguage();
   const localeDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(2024, 0, 1 + i);
@@ -121,7 +121,7 @@ export default function NutritionScreen({ onBack, dark }: Props) {
               {!isPaid && <LockedOverlay dark={dark} />}
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: '#607d8b', marginBottom: 0 }]}
-                onPress={() => Alert.alert(t.aiRecipes, t.aiRecipesMsg, [{ text: t.ok }])}
+                onPress={() => onOpenChat?.()}
               >
                 <Text style={styles.addBtnText}>{t.aiRecipes}</Text>
               </TouchableOpacity>
@@ -156,7 +156,7 @@ export default function NutritionScreen({ onBack, dark }: Props) {
               {!isPaid && <LockedOverlay dark={dark} />}
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: '#607d8b', marginBottom: 0 }]}
-                onPress={() => Alert.alert(t.aiSupps, t.SuppsMsg, [{ text: t.ok }])}
+                onPress={() => onOpenChat?.()}
               >
                 <Text style={styles.addBtnText}>{t.aiSupps}</Text>
               </TouchableOpacity>
@@ -195,7 +195,7 @@ export default function NutritionScreen({ onBack, dark }: Props) {
               {!isPaid && <LockedOverlay dark={dark} />}
               <TouchableOpacity
                 style={[styles.addBtn, { backgroundColor: '#9c27b0', marginBottom: 0 }]}
-                onPress={() => Alert.alert(t.aiMealPlan, t.aiMealMsg, [{ text: t.ok }])}
+                onPress={() => onOpenChat?.()}
               >
                 <Text style={styles.addBtnText}>{t.aiMealPlan}</Text>
               </TouchableOpacity>

@@ -8,11 +8,11 @@ import { usePlan } from '../hooks/usePlan';
 import LockedOverlay from '../components/LockedOverlay';
 import { useLanguage } from '../context/LanguageContext';
 
-interface Props { onBack: () => void; dark: boolean; }
+interface Props { onBack: () => void; dark: boolean; onOpenChat?: () => void; }
 
 const ACCENT = '#2196f3';
 
-export default function BooksScreen({ onBack, dark }: Props) {
+export default function BooksScreen({ onBack, dark, onOpenChat }: Props) {
   const { t } = useLanguage();
   const { addBook, updateBook, removeBook, finishBook, byStatus, totalFinished, totalPages, thisMonthFinished, dailyGoal, todayPages, saveDailyGoal, addTodayPages } = useBooksData();
   const { isPaid } = usePlan();
@@ -141,7 +141,7 @@ export default function BooksScreen({ onBack, dark }: Props) {
           {!isPaid && <LockedOverlay dark={dark} />}
           <TouchableOpacity
             style={[styles.aiBtn, { backgroundColor: '#9c27b0', marginBottom: 0 }]}
-            onPress={() => Alert.alert(t.aiRecs, t.aiRecsMsg, [{ text: 'Разбрах' }])}
+            onPress={() => onOpenChat?.()}
           >
           <Text style={styles.aiBtnText}>{t.aiRecs}</Text>
           </TouchableOpacity>

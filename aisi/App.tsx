@@ -19,13 +19,14 @@ import WorkoutScreen from './screens/WorkoutScreen';
 import NutritionScreen from './screens/NutritionScreen';
 import ProgressScreen from './screens/ProgressScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import ChatScreen from './screens/ChatScreen';
 import { WorkoutProvider } from './context/WorkoutContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { initFromOnboarding } from './hooks/useOnboardingInit';
 import { useAuth } from './hooks/useAuth';
 import AuthScreen from './screens/AuthScreen';
 
-type Screen = 'home' | 'calories' | 'books' | 'workout' | 'nutrition' | 'progress' | 'profile';
+type Screen = 'home' | 'calories' | 'books' | 'workout' | 'nutrition' | 'progress' | 'profile' | 'chat';
 
 
 function getGreeting(t: { goodMorning: string; goodDay: string; goodEvening: string }): string {
@@ -48,7 +49,10 @@ function AppInner() {
     { id: 'profile',   title: t.profile,    icon: 'person-outline',     accent: '#9e9e9e' },
   ];
   const [screen, setScreen] = useState<Screen>('home');
+  const [chatReturn, setChatReturn] = useState<Screen>('home');
   const [dark, setDark] = useState(false);
+
+  const openChat = (from: Screen) => { setChatReturn(from); setScreen('chat'); };
   const theme = dark ? darkTheme : lightTheme;
   const { data: profileData } = useProfileData();
   const { completed, save: saveOnboarding, data: onboardingData } = useOnboarding();
@@ -88,12 +92,13 @@ function AppInner() {
     />
   );
 
-  if (screen === 'calories')  return <CaloriesScreen  onBack={() => setScreen('home')} dark={dark} createdAt={onboardingData.createdAt || new Date().toISOString()} />;
-  if (screen === 'books')     return <BooksScreen     onBack={() => setScreen('home')} dark={dark} />;
-  if (screen === 'workout')   return <WorkoutScreen   onBack={() => setScreen('home')} dark={dark} />;
-  if (screen === 'nutrition') return <NutritionScreen onBack={() => setScreen('home')} dark={dark} />;
+  if (screen === 'calories')  return <CaloriesScreen  onBack={() => setScreen('home')} dark={dark} createdAt={onboardingData.createdAt || new Date().toISOString()} onOpenChat={() => openChat('calories')} />;
+  if (screen === 'books')     return <BooksScreen     onBack={() => setScreen('home')} dark={dark} onOpenChat={() => openChat('books')} />;
+  if (screen === 'workout')   return <WorkoutScreen   onBack={() => setScreen('home')} dark={dark} onOpenChat={() => openChat('workout')} />;
+  if (screen === 'nutrition') return <NutritionScreen onBack={() => setScreen('home')} dark={dark} onOpenChat={() => openChat('nutrition')} />;
   if (screen === 'progress')  return <ProgressScreen  onBack={() => setScreen('home')} dark={dark} createdAt={onboardingData.createdAt || new Date().toISOString()} />;
   if (screen === 'profile')   return <ProfileScreen   onBack={() => setScreen('home')} dark={dark} onToggleDark={() => setDark(!dark)} onLogout={logout} />;
+  if (screen === 'chat')      return <ChatScreen      onBack={() => setScreen(chatReturn)} dark={dark} />;
 
   const rows = [
     sections.slice(0, 2),

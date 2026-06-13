@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles } from '../styles/screens/ProgressScreenStyles';
 import { useStepTracker } from '../hooks/useStepTracker';
 import { useProgressData, weekRangeLabel, monthLabel, groupByWeek, getWeekDays, dayLabel } from '../hooks/useProgressData';
-import { useWorkoutContext } from '../context/WorkoutContext';
 import BarChart from '../components/BarChart';
 import MiniLineChart from '../components/MiniLineChart';
 import LockedOverlay from '../components/LockedOverlay';
@@ -44,13 +43,12 @@ export default function ProgressScreen({ onBack, dark, createdAt }: Props) {
     const today = new Date();
     return (created.getFullYear() - today.getFullYear()) * 12 + (created.getMonth() - today.getMonth());
   })();
-  const { history } = useWorkoutContext();
   const { steps, goal, saveGoal, available, km, kcal, percentage } = useStepTracker();
   const {
     weekData, weekOffset, setWeekOffset,
     monthData, monthOffset, setMonthOffset,
-    weightLog, saveWeight, calcStreak,
-  } = useProgressData(history);
+    weightLog, saveWeight, streak,
+  } = useProgressData();
 
   const [tab, setTab]             = useState<Tab>('today');
   const [showGoalEdit, setShowGoalEdit] = useState(false);
@@ -66,7 +64,6 @@ export default function ProgressScreen({ onBack, dark, createdAt }: Props) {
   const tabBg       = dark ? '#1c1c1e' : '#f0f0f0';
 
   const { isPaid } = usePlan();
-  const streak    = calcStreak();
   const todaySummary = weekData[weekData.length - 1] ?? { calories: 0, workouts: 0, pages: 0 };
   const last7     = getWeekDays(weekOffset);
   const labels    = getWeekDays(weekOffset).map(d => dayLabel(d, locale));

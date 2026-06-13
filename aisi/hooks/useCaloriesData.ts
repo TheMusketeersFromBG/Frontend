@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect, useCallback } from 'react';
+import { apiRequest, subscribeAuthChange } from '../api/client';
 
 export interface FoodEntry {
   id: string;
@@ -17,8 +17,29 @@ interface DayData {
   goal: number;
 }
 
-const STORAGE_PREFIX = 'aisi_calories_';
+interface FoodEntryResponse {
+  id: number;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  time: string;
+  photo: string | null;
+}
+
+interface CaloriesDayResponse {
+  date: string;
+  goal: number;
+  entries: FoodEntryResponse[];
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+}
+
 const DEFAULT_GOAL = 2000;
+const DEFAULT_DAY_DATA: DayData = { entries: [], goal: DEFAULT_GOAL };
 
 export function todayKey(): string {
   return new Date().toISOString().split('T')[0];
@@ -29,35 +50,90 @@ export function formatDateLabel(key: string, locale = 'bg-BG'): string {
   return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export function useCaloriesData(dateKey: string) {
-  const [dayData, setDayData] = useState<DayData>({ entries: [], goal: DEFAULT_GOAL });
+function fromApiEntry(e: FoodEntryResponse): FoodEntry {
+  return {
+    id: String(e.id),
+    name: e.name,
+    calories: e.calories,
+    protein: e.protein,
+    carbs: e.carbs,
+    fat: e.fat,
+    time: e.time,
+    photo: e.photo ?? undefined,
+  };
+}
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_PREFIX + dateKey).then((raw) => {
-      if (raw) setDayData(JSON.parse(raw));
-      else setDayData({ entries: [], goal: DEFAULT_GOAL });
-    });
+function fromApiDay(res: CaloriesDayResponse): DayData {
+  return {
+    entries: res.entries.map(fromApiEntry),
+    goal: res.goal,
+  };
+}
+
+export function useCaloriesData(dateKey: string) {
+  const [dayData, setDayData] = useState<DayData>(DEFAULT_DAY_DATA);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await apiRequest<CaloriesDayResponse>(`/api/calories/${dateKey}`);
+      setDayData(fromApiDay(res));
+    } catch {
+      setDayData(DEFAULT_DAY_DATA);
+    }
   }, [dateKey]);
 
-  const save = async (updated: DayData) => {
-    setDayData(updated);
-    await AsyncStorage.setItem(STORAGE_PREFIX + dateKey, JSON.stringify(updated));
-  };
+  useEffect(() => {
+    load();
+    return subscribeAuthChange(load);
+  }, [load]);
 
-  const addEntry = (entry: Omit<FoodEntry, 'id' | 'time'>) => {
-    const newEntry: FoodEntry = {
+  const addEntry = async (entry: Omit<FoodEntry, 'id' | 'time'>) => {
+    const tempEntry: FoodEntry = {
       ...entry,
-      id: Date.now().toString(),
+      id: `temp-${Date.now()}`,
       time: new Date().toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' }),
     };
-    save({ ...dayData, entries: [...dayData.entries, newEntry] });
+    setDayData(prev => ({ ...prev, entries: [...prev.entries, tempEntry] }));
+    try {
+      await apiRequest<FoodEntryResponse>(`/api/calories/${dateKey}/entries`, {
+        method: 'POST',
+        body: {
+          name: entry.name,
+          calories: entry.calories,
+          protein: entry.protein,
+          carbs: entry.carbs,
+          fat: entry.fat,
+          photo: entry.photo || null,
+        },
+      });
+      await load();
+    } catch {
+      // optimistic update already applied; reload to resync if possible
+      await load();
+    }
   };
 
-  const removeEntry = (id: string) => {
-    save({ ...dayData, entries: dayData.entries.filter(e => e.id !== id) });
+  const removeEntry = async (id: string) => {
+    setDayData(prev => ({ ...prev, entries: prev.entries.filter(e => e.id !== id) }));
+    try {
+      await apiRequest<void>(`/api/calories/entries/${id}`, { method: 'DELETE' });
+    } catch {
+      await load();
+    }
   };
 
-  const setGoal = (goal: number) => save({ ...dayData, goal });
+  const setGoal = async (goal: number) => {
+    setDayData(prev => ({ ...prev, goal }));
+    try {
+      const res = await apiRequest<CaloriesDayResponse>(`/api/calories/${dateKey}/goal`, {
+        method: 'PUT',
+        body: { goal },
+      });
+      setDayData(fromApiDay(res));
+    } catch {
+      await load();
+    }
+  };
 
   const totalCalories = dayData.entries.reduce((sum, e) => sum + e.calories, 0);
   const totalProtein  = dayData.entries.reduce((sum, e) => sum + e.protein,  0);

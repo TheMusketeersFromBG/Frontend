@@ -22,7 +22,6 @@ import ProfileScreen from './screens/ProfileScreen';
 import ChatScreen from './screens/ChatScreen';
 import { WorkoutProvider } from './context/WorkoutContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
-import { initFromOnboarding } from './hooks/useOnboardingInit';
 import { useAuth } from './hooks/useAuth';
 import AuthScreen from './screens/AuthScreen';
 
@@ -87,7 +86,6 @@ function AppInner() {
       dark={dark}
       onComplete={async (data) => {
         await saveOnboarding(data);
-        await initFromOnboarding(data);
       }}
     />
   );

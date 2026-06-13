@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { styles } from '../styles/screens/ProfileScreenStyles';
 import { useProfileData } from '../hooks/useProfileData';
+import { usePlan } from '../hooks/usePlan';
 import { useLanguage } from '../context/LanguageContext';
 import type { Lang } from '../translations';
 
@@ -68,7 +69,25 @@ function bmiLabel(bmi: number): { label: string; color: string } {
 
 export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: Props) {
   const { data, updateMetric, updateName, updatePhoto, updateNotifications, updateLanguage } = useProfileData();
+  const { isPaid, plan, setPlan } = usePlan();
   const { lang: currentLang, setLang, t } = useLanguage();
+
+  const planOptions = [
+    {
+      value: 'free' as const,
+      title: t.planFree,
+      price: t.planFreePrice,
+      color: '#888',
+      features: ['✅ Следене на калории', '✅ Тренировки', '✅ Книги', '✅ Хранене', '✅ Прогрес (базов)', '🔒 AI функции', '🔒 Графики и обобщение'],
+    },
+    {
+      value: 'paid' as const,
+      title: t.planPaid,
+      price: t.planPaidPrice,
+      color: PLAN_COLOR,
+      features: ['✅ Всичко от безплатния', '✅ AI препоръки за храна', '✅ AI workout програма', '✅ AI книги по вкус', '✅ Графики и обобщение', '✅ AI калории от снимка'],
+    },
+  ];
 
   const achievements = [
     { emoji: '🏆', title: t.ach1Title, desc: t.ach1Desc, unlocked: true },
@@ -144,6 +163,8 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
   const [editingName, setEditingName] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'paid'>(plan);
   const [inputVal, setInputVal] = useState('');
 
   const bg = dark ? '#0f0f0f' : '#FFF8F0';
@@ -163,6 +184,11 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
   const openMetric = (key: MetricKey, label: string, unit: string) => {
     setInputVal(data.metrics[key]);
     setEditing({ key, label, unit });
+  };
+
+  const openPlanModal = () => {
+    setSelectedPlan(plan);
+    setShowPlanModal(true);
   };
 
   return (
@@ -186,7 +212,7 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
           <View style={styles.nameCol}>
             <Text style={[styles.name, { color: text }]}>{displayName}</Text>
             <View style={[styles.planBadge, { backgroundColor: PLAN_COLOR }]}>
-              <Text style={styles.planBadgeText}>{t.freePlan}</Text>
+              <Text style={styles.planBadgeText}>{isPaid ? t.paidPlan : t.freePlan}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -349,13 +375,13 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
               </Text>
             </TouchableOpacity>
             <View style={[styles.separator, { backgroundColor: sepColor }]} />
-            <View style={styles.settingRow}>
+            <TouchableOpacity style={styles.settingRow} onPress={openPlanModal}>
               <View style={styles.settingLeft}>
                 <Ionicons name="diamond-outline" size={20} color={PLAN_COLOR} />
                 <Text style={[styles.settingLabel, { color: text }]}>{t.plan}</Text>
               </View>
-              <Text style={[styles.settingValue, { color: PLAN_COLOR }]}>{t.freePlan} →</Text>
-            </View>
+              <Text style={[styles.settingValue, { color: PLAN_COLOR }]}>{isPaid ? t.paidPlan : t.freePlan} →</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -493,6 +519,72 @@ export default function ProfileScreen({ onBack, dark, onToggleDark, onLogout }: 
               >
                 <Text style={[styles.modalBtnText, { color: '#fff' }]}>{t.save}</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal за план */}
+      <Modal visible={showPlanModal} transparent animationType="fade" onRequestClose={() => setShowPlanModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: cardBg }]}>
+            <Text style={[styles.modalTitle, { color: text }]}>{t.managePlan}</Text>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 14 }}>
+                {planOptions.map((opt) => {
+                  const isSelected = selectedPlan === opt.value;
+                  const isCurrent = plan === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={{
+                        borderRadius: 20, padding: 16, borderWidth: 2,
+                        borderColor: isSelected ? opt.color : inputBorder,
+                        backgroundColor: isSelected ? `${opt.color}18` : inputBg,
+                      }}
+                      onPress={() => setSelectedPlan(opt.value)}
+                      activeOpacity={0.85}
+                    >
+                      {isCurrent && (
+                        <Text style={{ color: opt.color, fontSize: 12, fontWeight: '700', marginBottom: 6 }}>
+                          {t.currentPlanLabel}
+                        </Text>
+                      )}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '900', color: isSelected ? opt.color : text }}>{opt.title}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: opt.color }}>{opt.price}</Text>
+                      </View>
+                      {opt.features.map((f, i) => (
+                        <Text key={i} style={{ fontSize: 13, color: subtext, marginBottom: 4 }}>{f}</Text>
+                      ))}
+                      {isSelected && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                          <Ionicons name="checkmark-circle" size={18} color={opt.color} />
+                          <Text style={{ color: opt.color, fontWeight: '700', fontSize: 13 }}>{t.selected}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {selectedPlan === 'paid' && selectedPlan !== plan && (
+                <Text style={{ fontSize: 12, color: subtext, marginTop: 12, textAlign: 'center' }}>{t.demoPaymentNote}</Text>
+              )}
+            </ScrollView>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: inputBg }]} onPress={() => setShowPlanModal(false)}>
+                <Text style={[styles.modalBtnText, { color: subtext }]}>{t.close}</Text>
+              </TouchableOpacity>
+              {selectedPlan !== plan && (
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: selectedPlan === 'paid' ? PLAN_COLOR : '#888' }]}
+                  onPress={() => { setPlan(selectedPlan); setShowPlanModal(false); }}
+                >
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>
+                    {selectedPlan === 'paid' ? t.subscribeAction : t.unsubscribeAction}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>

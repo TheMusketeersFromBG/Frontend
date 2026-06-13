@@ -1,9 +1,5 @@
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const CAL_PREFIX = 'aisi_calories_';
-const STEPS_HIST = 'aisi_steps_history';
-const WEIGHT_KEY = 'aisi_weight_log';
+import { useState, useEffect, useCallback } from 'react';
+import { apiRequest, subscribeAuthChange } from '../api/client';
 
 export interface DayData {
   date: string;
@@ -15,6 +11,20 @@ export interface DayData {
 }
 
 export interface WeightEntry {
+  date: string;
+  weight: number;
+}
+
+interface DayDataResponse {
+  date: string;
+  label: string;
+  calories: number;
+  steps: number;
+  workouts: number;
+  pages: number;
+}
+
+interface WeightEntryResponse {
   date: string;
   weight: number;
 }
@@ -80,32 +90,35 @@ export function groupByWeek(days: DayData[]): DayData[] {
   return weeks;
 }
 
-async function loadDays(
-  dates: string[],
-  workoutHistory: { date: string }[],
-  stepsHist: Record<string, number>
-): Promise<DayData[]> {
-  const [calRaws, pagesRaws] = await Promise.all([
-    Promise.all(dates.map(d => AsyncStorage.getItem(CAL_PREFIX + d))),
-    Promise.all(dates.map(d => AsyncStorage.getItem(`aisi_books_today_${d}`))),
-  ]);
-
-  return dates.map((date, i) => {
-    const calData = calRaws[i] ? JSON.parse(calRaws[i]!) : null;
-    return {
-      date,
-      label: dayLabel(date),
-      calories: calData?.entries?.reduce((s: number, e: { calories: number }) => s + e.calories, 0) ?? 0,
-      steps: stepsHist[date] ?? 0,
-      workouts: workoutHistory.filter(w => w.date.startsWith(date)).length,
-      pages: pagesRaws[i] ? JSON.parse(pagesRaws[i]!) : 0,
-    };
-  });
+function fromApi(res: DayDataResponse): DayData {
+  return {
+    date: res.date,
+    label: res.label,
+    calories: res.calories,
+    steps: res.steps,
+    workouts: res.workouts,
+    pages: res.pages,
+  };
 }
 
-export function useProgressData(workoutHistory: { date: string }[]) {
-  const [stepsHistory, setStepsHistory] = useState<Record<string, number>>({});
-  const [weightLog, setWeightLog]       = useState<WeightEntry[]>([]);
+function weightFromApi(res: WeightEntryResponse): WeightEntry {
+  return { date: res.date, weight: res.weight };
+}
+
+async function loadDays(dates: string[]): Promise<DayData[]> {
+  try {
+    const start = dates[0];
+    const end = dates[dates.length - 1];
+    const res = await apiRequest<DayDataResponse[]>(`/api/progress/days?start=${start}&end=${end}`);
+    return res.map(fromApi);
+  } catch {
+    return dates.map(date => ({ date, label: dayLabel(date), calories: 0, steps: 0, workouts: 0, pages: 0 }));
+  }
+}
+
+export function useProgressData() {
+  const [weightLog, setWeightLog] = useState<WeightEntry[]>([]);
+  const [streak, setStreak] = useState(0);
 
   // Week
   const [weekOffset, setWeekOffset] = useState(0);
@@ -115,65 +128,70 @@ export function useProgressData(workoutHistory: { date: string }[]) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [monthData, setMonthData]     = useState<DayData[]>([]);
 
+  const loadBase = useCallback(async () => {
+    try {
+      const [weightRes, streakRes] = await Promise.all([
+        apiRequest<WeightEntryResponse[]>('/api/progress/weight'),
+        apiRequest<{ streak: number }>('/api/progress/streak'),
+      ]);
+      setWeightLog(weightRes.map(weightFromApi));
+      setStreak(streakRes.streak);
+    } catch {
+      setWeightLog([]);
+      setStreak(0);
+    }
+  }, []);
+
   useEffect(() => {
     loadBase();
-  }, [workoutHistory.length]);
+    return subscribeAuthChange(loadBase);
+  }, [loadBase]);
 
-  useEffect(() => { if (Object.keys(stepsHistory).length >= 0) loadWeek(); }, [weekOffset, stepsHistory, workoutHistory.length]);
-  useEffect(() => { if (Object.keys(stepsHistory).length >= 0) loadMonth(); }, [monthOffset, stepsHistory, workoutHistory.length]);
-
-  const loadBase = async () => {
-    const [stepsRaw, wRaw] = await Promise.all([
-      AsyncStorage.getItem(STEPS_HIST),
-      AsyncStorage.getItem(WEIGHT_KEY),
-    ]);
-    const hist: Record<string, number> = stepsRaw ? JSON.parse(stepsRaw) : {};
-    setStepsHistory(hist);
-    if (wRaw) setWeightLog(JSON.parse(wRaw));
-  };
-
-  const loadWeek = async () => {
+  const loadWeek = useCallback(async () => {
     const days = getWeekDays(weekOffset);
-    const stepsRaw = await AsyncStorage.getItem(STEPS_HIST);
-    const hist: Record<string, number> = stepsRaw ? JSON.parse(stepsRaw) : {};
-    const data = await loadDays(days, workoutHistory, hist);
-    setWeekData(data);  // labels updated in component
-  };
+    const data = await loadDays(days);
+    setWeekData(data);
+  }, [weekOffset]);
 
-  const loadMonth = async () => {
+  const loadMonth = useCallback(async () => {
     const days = getMonthDays(monthOffset);
-    const stepsRaw = await AsyncStorage.getItem(STEPS_HIST);
-    const hist: Record<string, number> = stepsRaw ? JSON.parse(stepsRaw) : {};
-    const data = await loadDays(days, workoutHistory, hist);
+    const data = await loadDays(days);
     setMonthData(data);
-  };
+  }, [monthOffset]);
+
+  useEffect(() => {
+    loadWeek();
+    return subscribeAuthChange(loadWeek);
+  }, [loadWeek]);
+
+  useEffect(() => {
+    loadMonth();
+    return subscribeAuthChange(loadMonth);
+  }, [loadMonth]);
 
   const saveWeight = async (weight: number) => {
-    const entry: WeightEntry = { date: new Date().toISOString().split('T')[0], weight };
-    const updated = [...weightLog.filter(e => e.date !== entry.date), entry]
+    const today = new Date().toISOString().split('T')[0];
+    const optimistic = [...weightLog.filter(e => e.date !== today), { date: today, weight }]
       .sort((a, b) => a.date.localeCompare(b.date));
-    setWeightLog(updated);
-    await AsyncStorage.setItem(WEIGHT_KEY, JSON.stringify(updated));
-  };
-
-  const calcStreak = (): number => {
-    let streak = 0;
-    for (let i = 0; i <= 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
-      const hasActivity =
-        workoutHistory.some(w => w.date.startsWith(key)) ||
-        (stepsHistory[key] ?? 0) > 1000;
-      if (!hasActivity) break;
-      streak++;
+    setWeightLog(optimistic);
+    try {
+      const res = await apiRequest<WeightEntryResponse>('/api/progress/weight', {
+        method: 'POST',
+        body: { weight },
+      });
+      const entry = weightFromApi(res);
+      setWeightLog(prev => [...prev.filter(e => e.date !== entry.date), entry].sort((a, b) => a.date.localeCompare(b.date)));
+      // Weight may affect today's data; refresh streak too in case it changes server logic later.
+      loadWeek();
+      loadMonth();
+    } catch {
+      // optimistic update already applied; ignore network errors
     }
-    return streak;
   };
 
   return {
     weekData, weekOffset, setWeekOffset,
     monthData, monthOffset, setMonthOffset,
-    weightLog, saveWeight, calcStreak,
+    weightLog, saveWeight, streak,
   };
 }

@@ -85,7 +85,7 @@ export default function BooksScreen({ onBack, dark, onOpenChat }: Props) {
 
   const submit = () => {
     if (!form.title || !form.author) return;
-    addBook({ title: form.title, author: form.author, pages: Number(form.pages) || 0, genre: form.genre, cover: form.cover, status: activeTab });
+    addBook({ title: form.title, author: form.author, pages: Number(form.pages) || 0, genre: form.genre, cover: form.cover, status: activeTab, rating: 0 });
     setForm({ title: '', author: '', pages: '', genre: '', cover: '' });
     setShowAdd(false);
   };

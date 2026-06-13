@@ -1,9 +1,51 @@
-import { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, useContext, useState, useRef, useCallback, useEffect, ReactNode } from 'react';
+import { apiRequest, subscribeAuthChange } from '../api/client';
 import { type WorkoutExercise, type Workout, type PlanDay } from '../hooks/useWorkoutData';
 
-const KEY_HISTORY = 'aisi_workouts';
-const KEY_PLAN    = 'aisi_workout_plan';
+interface WorkoutResponse {
+  id: number;
+  name: string;
+  date: string;
+  duration: number;
+  exercises: WorkoutExercise[];
+  calories_burned: number;
+}
+
+interface PlanDayResponse {
+  name: string;
+  exercises: string[];
+}
+
+interface PlanResponse {
+  plan: Record<string, PlanDayResponse>;
+}
+
+function workoutFromApi(res: WorkoutResponse): Workout {
+  return {
+    id: String(res.id),
+    name: res.name,
+    date: res.date,
+    duration: res.duration,
+    exercises: res.exercises,
+    caloriesBurned: res.calories_burned,
+  };
+}
+
+function planFromApi(res: PlanResponse): Record<string, PlanDay> {
+  const plan: Record<string, PlanDay> = {};
+  for (const [day, d] of Object.entries(res.plan)) {
+    plan[day] = { name: d.name, exercises: d.exercises };
+  }
+  return plan;
+}
+
+function planToApi(plan: Record<string, PlanDay>): { plan: Record<string, PlanDayResponse> } {
+  const out: Record<string, PlanDayResponse> = {};
+  for (const [day, d] of Object.entries(plan)) {
+    out[day] = { name: d.name, exercises: d.exercises };
+  }
+  return { plan: out };
+}
 
 interface WorkoutContextType {
   history: Workout[];
@@ -37,16 +79,28 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const [workoutName, setWorkoutName] = useState('Тренировка');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem(KEY_HISTORY),
-      AsyncStorage.getItem(KEY_PLAN),
-    ]).then(([h, p]) => {
-      if (h) setHistory(JSON.parse(h));
-      if (p) setPlan(JSON.parse(p));
-    });
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  const load = useCallback(async () => {
+    try {
+      const [historyRes, planRes] = await Promise.all([
+        apiRequest<WorkoutResponse[]>('/api/workouts'),
+        apiRequest<PlanResponse>('/api/workouts/plan'),
+      ]);
+      setHistory(historyRes.map(workoutFromApi));
+      setPlan(planFromApi(planRes));
+    } catch {
+      setHistory([]);
+      setPlan({});
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+    const unsubscribe = subscribeAuthChange(load);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      unsubscribe();
+    };
+  }, [load]);
 
   const stopTimer = () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -59,24 +113,45 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
   const finishWorkout = async (caloriesBurned: number) => {
     stopTimer();
-    const workout: Workout = {
-      id: Date.now().toString(), name: workoutName,
-      date: new Date().toISOString(), duration: Math.round(elapsed / 60),
-      exercises: active, caloriesBurned,
-    };
-    const updated = [workout, ...history];
-    setHistory(updated);
-    await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(updated));
+    const duration = Math.round(elapsed / 60);
+    const exercises = active;
+    const name = workoutName;
     setIsActive(false); setActive([]); setElapsed(0);
+    try {
+      const res = await apiRequest<WorkoutResponse>('/api/workouts', {
+        method: 'POST',
+        body: {
+          name,
+          date: new Date().toISOString(),
+          duration,
+          exercises,
+          calories_burned: caloriesBurned,
+        },
+      });
+      setHistory(h => [workoutFromApi(res), ...h]);
+    } catch {
+      // ignore network errors
+    }
   };
 
   const cancelWorkout = () => { stopTimer(); setIsActive(false); setActive([]); setElapsed(0); };
 
   const quickLog = async (name: string, duration: number, caloriesBurned: number) => {
-    const workout: Workout = { id: Date.now().toString(), name, date: new Date().toISOString(), duration, exercises: [], caloriesBurned };
-    const updated = [workout, ...history];
-    setHistory(updated);
-    await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(updated));
+    try {
+      const res = await apiRequest<WorkoutResponse>('/api/workouts', {
+        method: 'POST',
+        body: {
+          name,
+          date: new Date().toISOString(),
+          duration,
+          exercises: [],
+          calories_burned: caloriesBurned,
+        },
+      });
+      setHistory(h => [workoutFromApi(res), ...h]);
+    } catch {
+      // ignore network errors
+    }
   };
 
   const addExercise = (ex: { name: string; muscleGroup: string }) => {
@@ -97,12 +172,24 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
   const savePlan = async (updated: Record<string, PlanDay>) => {
     setPlan(updated);
-    await AsyncStorage.setItem(KEY_PLAN, JSON.stringify(updated));
+    try {
+      const res = await apiRequest<PlanResponse>('/api/workouts/plan', {
+        method: 'PUT',
+        body: planToApi(updated),
+      });
+      setPlan(planFromApi(res));
+    } catch {
+      // optimistic update already applied; ignore network errors
+    }
   };
 
   const deleteWorkout = async (id: string) => {
-    const updated = history.filter(w => w.id !== id);
-    setHistory(updated); await AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(updated));
+    setHistory(h => h.filter(w => w.id !== id));
+    try {
+      await apiRequest(`/api/workouts/${id}`, { method: 'DELETE' });
+    } catch {
+      // optimistic update already applied; ignore network errors
+    }
   };
 
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;

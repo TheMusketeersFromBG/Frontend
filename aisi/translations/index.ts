@@ -127,6 +127,10 @@ export interface T {
 
   // Locked
   lockedMsg: string;
+
+  // Plan upgrade
+  subscribeAction: string; unsubscribeAction: string; demoPaymentNote: string;
+  currentPlanLabel: string; managePlan: string;
 }
 
 import bg from './bg';

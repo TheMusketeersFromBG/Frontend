@@ -11,7 +11,7 @@ const { width: W, height: H } = Dimensions.get('window');
 interface Props {
   dark: boolean;
   onLogin: (email: string, password: string) => Promise<string | null>;
-  onSignup: (name: string, email: string) => Promise<void>;
+  onSignup: (name: string, email: string, password: string) => Promise<string | null>;
   onGoToOnboarding: (name: string) => void;
 }
 
@@ -82,7 +82,8 @@ export default function AuthScreen({ onLogin, onSignup, onGoToOnboarding }: Prop
 
   const handleSignup = async () => {
     if (!validateSignup()) return;
-    await onSignup(name.trim(), email.trim());
+    const err = await onSignup(name.trim(), email.trim(), password);
+    if (err) { setErrors({ email: err }); return; }
     onGoToOnboarding(name.trim());
   };
 

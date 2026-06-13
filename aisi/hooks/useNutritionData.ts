@@ -1,11 +1,5 @@
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const KEY_WATER       = 'aisi_water_';
-const KEY_SUPPLEMENTS = 'aisi_supplements';
-const KEY_GOALS       = 'aisi_nutrition_goals';
-const KEY_RECIPES     = 'aisi_recipes';
-const KEY_MEALPLAN    = 'aisi_mealplan';
+import { useState, useEffect, useCallback } from 'react';
+import { apiRequest, subscribeAuthChange } from '../api/client';
 
 export interface Supplement {
   id: string;
@@ -39,91 +33,228 @@ export interface MealSlot {
   dinner: string;
 }
 
+interface WaterResponse {
+  date: string;
+  glasses: number;
+}
+
+interface SupplementResponse {
+  id: number;
+  name: string;
+  dose: string;
+  time: string;
+  taken_today: boolean;
+}
+
+interface NutritionGoalsResponse {
+  protein: number;
+  carbs: number;
+  fat: number;
+  water: number;
+}
+
+interface RecipeResponse {
+  id: number;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  prep_time: string;
+  description: string;
+}
+
+interface MealSlotResponse {
+  breakfast: string;
+  lunch: string;
+  dinner: string;
+}
+
+interface MealPlanResponse {
+  meal_plan: Record<string, MealSlotResponse>;
+}
+
 function todayKey() {
   return new Date().toISOString().split('T')[0];
 }
 
 const DEFAULT_GOALS: NutritionGoals = { protein: 150, carbs: 250, fat: 70, water: 8 };
 
-const SAMPLE_RECIPES: Recipe[] = [
-  { id: '1', name: 'Овесена каша с плодове', calories: 320, protein: 12, carbs: 58, fat: 6, prepTime: '10 мин', description: 'Здравословна закуска богата на фибри и витамини.' },
-  { id: '2', name: 'Пилешки гърди на скара', calories: 280, protein: 52, carbs: 0, fat: 6, prepTime: '20 мин', description: 'Постно месо богато на протеин.' },
-  { id: '3', name: 'Гръцка салата', calories: 180, protein: 8, carbs: 12, fat: 12, prepTime: '10 мин', description: 'Свежа салата с фета и маслини.' },
-  { id: '4', name: 'Лосос с зеленчуци', calories: 420, protein: 38, carbs: 15, fat: 24, prepTime: '25 мин', description: 'Богат на омега-3 мастни киселини.' },
-];
+function fromApiSupplement(s: SupplementResponse): Supplement {
+  return {
+    id: String(s.id),
+    name: s.name,
+    dose: s.dose,
+    time: s.time,
+    takenToday: s.taken_today,
+  };
+}
+
+function fromApiGoals(g: NutritionGoalsResponse): NutritionGoals {
+  return {
+    protein: g.protein,
+    carbs: g.carbs,
+    fat: g.fat,
+    water: g.water,
+  };
+}
+
+function fromApiRecipe(r: RecipeResponse): Recipe {
+  return {
+    id: String(r.id),
+    name: r.name,
+    calories: r.calories,
+    protein: r.protein,
+    carbs: r.carbs,
+    fat: r.fat,
+    prepTime: r.prep_time,
+    description: r.description,
+  };
+}
 
 export function useNutritionData() {
   const [waterGlasses, setWaterGlasses]   = useState(0);
   const [supplements, setSupplements]     = useState<Supplement[]>([]);
   const [goals, setGoalsState]            = useState<NutritionGoals>(DEFAULT_GOALS);
-  const [recipes, setRecipes]             = useState<Recipe[]>(SAMPLE_RECIPES);
+  const [recipes, setRecipes]             = useState<Recipe[]>([]);
   const [mealPlan, setMealPlanState]      = useState<Record<string, MealSlot>>({});
 
-  useEffect(() => {
-    const load = async () => {
+  const load = useCallback(async () => {
+    try {
       const [w, s, g, r, m] = await Promise.all([
-        AsyncStorage.getItem(KEY_WATER + todayKey()),
-        AsyncStorage.getItem(KEY_SUPPLEMENTS),
-        AsyncStorage.getItem(KEY_GOALS),
-        AsyncStorage.getItem(KEY_RECIPES),
-        AsyncStorage.getItem(KEY_MEALPLAN),
+        apiRequest<WaterResponse>(`/api/nutrition/water/${todayKey()}`),
+        apiRequest<SupplementResponse[]>('/api/nutrition/supplements'),
+        apiRequest<NutritionGoalsResponse>('/api/nutrition/goals'),
+        apiRequest<RecipeResponse[]>('/api/nutrition/recipes'),
+        apiRequest<MealPlanResponse>('/api/nutrition/meal-plan'),
       ]);
-      if (w) setWaterGlasses(JSON.parse(w));
-      if (s) setSupplements(JSON.parse(s));
-      if (g) setGoalsState(JSON.parse(g));
-      if (r) setRecipes(JSON.parse(r));
-      if (m) setMealPlanState(JSON.parse(m));
-    };
-    load();
+      setWaterGlasses(w.glasses);
+      setSupplements(s.map(fromApiSupplement));
+      setGoalsState(fromApiGoals(g));
+      setRecipes(r.map(fromApiRecipe));
+      setMealPlanState(m.meal_plan);
+    } catch {
+      setWaterGlasses(0);
+      setSupplements([]);
+      setGoalsState(DEFAULT_GOALS);
+      setRecipes([]);
+      setMealPlanState({});
+    }
   }, []);
 
+  useEffect(() => {
+    load();
+    return subscribeAuthChange(load);
+  }, [load]);
+
   const addWater = async () => {
-    const next = waterGlasses + 1;
-    setWaterGlasses(next);
-    await AsyncStorage.setItem(KEY_WATER + todayKey(), JSON.stringify(next));
+    setWaterGlasses(prev => prev + 1);
+    try {
+      const res = await apiRequest<WaterResponse>(`/api/nutrition/water/${todayKey()}`, { method: 'POST' });
+      setWaterGlasses(res.glasses);
+    } catch {
+      setWaterGlasses(prev => Math.max(0, prev - 1));
+    }
   };
+
   const removeWater = async () => {
-    const next = Math.max(0, waterGlasses - 1);
-    setWaterGlasses(next);
-    await AsyncStorage.setItem(KEY_WATER + todayKey(), JSON.stringify(next));
+    setWaterGlasses(prev => Math.max(0, prev - 1));
+    try {
+      const res = await apiRequest<WaterResponse>(`/api/nutrition/water/${todayKey()}`, { method: 'DELETE' });
+      setWaterGlasses(res.glasses);
+    } catch {
+      setWaterGlasses(prev => prev + 1);
+    }
   };
 
   const toggleSupplement = async (id: string) => {
-    const updated = supplements.map(s => s.id === id ? { ...s, takenToday: !s.takenToday } : s);
-    setSupplements(updated);
-    await AsyncStorage.setItem(KEY_SUPPLEMENTS, JSON.stringify(updated));
+    setSupplements(prev => prev.map(s => s.id === id ? { ...s, takenToday: !s.takenToday } : s));
+    try {
+      const res = await apiRequest<SupplementResponse>(`/api/nutrition/supplements/${id}/toggle`, { method: 'POST' });
+      setSupplements(prev => prev.map(s => s.id === id ? fromApiSupplement(res) : s));
+    } catch {
+      setSupplements(prev => prev.map(s => s.id === id ? { ...s, takenToday: !s.takenToday } : s));
+    }
   };
+
   const addSupplement = async (s: Omit<Supplement, 'id' | 'takenToday'>) => {
-    const updated = [...supplements, { ...s, id: Date.now().toString(), takenToday: false }];
-    setSupplements(updated);
-    await AsyncStorage.setItem(KEY_SUPPLEMENTS, JSON.stringify(updated));
+    try {
+      const res = await apiRequest<SupplementResponse>('/api/nutrition/supplements', {
+        method: 'POST',
+        body: { name: s.name, dose: s.dose, time: s.time },
+      });
+      setSupplements(prev => [...prev, fromApiSupplement(res)]);
+    } catch {
+      // ignore network errors; nothing to roll back since we didn't optimistically add
+    }
   };
+
   const removeSupplement = async (id: string) => {
-    const updated = supplements.filter(s => s.id !== id);
-    setSupplements(updated);
-    await AsyncStorage.setItem(KEY_SUPPLEMENTS, JSON.stringify(updated));
+    setSupplements(prev => prev.filter(s => s.id !== id));
+    try {
+      await apiRequest<void>(`/api/nutrition/supplements/${id}`, { method: 'DELETE' });
+    } catch {
+      await load();
+    }
   };
 
   const saveGoals = async (g: NutritionGoals) => {
     setGoalsState(g);
-    await AsyncStorage.setItem(KEY_GOALS, JSON.stringify(g));
+    try {
+      const res = await apiRequest<NutritionGoalsResponse>('/api/nutrition/goals', {
+        method: 'PUT',
+        body: g,
+      });
+      setGoalsState(fromApiGoals(res));
+    } catch {
+      // optimistic update already applied; ignore network errors
+    }
   };
 
   const addRecipe = async (r: Omit<Recipe, 'id'>) => {
-    const updated = [...recipes, { ...r, id: Date.now().toString() }];
-    setRecipes(updated);
-    await AsyncStorage.setItem(KEY_RECIPES, JSON.stringify(updated));
+    try {
+      const res = await apiRequest<RecipeResponse>('/api/nutrition/recipes', {
+        method: 'POST',
+        body: {
+          name: r.name,
+          calories: r.calories,
+          protein: r.protein,
+          carbs: r.carbs,
+          fat: r.fat,
+          prep_time: r.prepTime,
+          description: r.description,
+        },
+      });
+      setRecipes(prev => [...prev, fromApiRecipe(res)]);
+    } catch {
+      // ignore network errors; nothing to roll back since we didn't optimistically add
+    }
   };
+
   const removeRecipe = async (id: string) => {
-    const updated = recipes.filter(r => r.id !== id);
-    setRecipes(updated);
-    await AsyncStorage.setItem(KEY_RECIPES, JSON.stringify(updated));
+    setRecipes(prev => prev.filter(r => r.id !== id));
+    try {
+      await apiRequest<void>(`/api/nutrition/recipes/${id}`, { method: 'DELETE' });
+    } catch {
+      await load();
+    }
   };
 
   const updateMealSlot = async (day: string, slot: keyof MealSlot, value: string) => {
-    const updated = { ...mealPlan, [day]: { ...(mealPlan[day] || {}), [slot]: value } };
-    setMealPlanState(updated as Record<string, MealSlot>);
-    await AsyncStorage.setItem(KEY_MEALPLAN, JSON.stringify(updated));
+    const defaultSlot: MealSlot = { breakfast: '', lunch: '', dinner: '' };
+    setMealPlanState(prev => ({
+      ...prev,
+      [day]: { ...defaultSlot, ...(prev[day] || {}), [slot]: value },
+    }));
+    try {
+      const res = await apiRequest<MealPlanResponse>(`/api/nutrition/meal-plan/${day}`, {
+        method: 'PUT',
+        body: { slot, value },
+      });
+      setMealPlanState(res.meal_plan);
+    } catch {
+      await load();
+    }
   };
 
   return {
